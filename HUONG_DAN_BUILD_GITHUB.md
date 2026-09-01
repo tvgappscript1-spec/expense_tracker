@@ -116,6 +116,7 @@ Không cần build lại thủ công. Chỉ cần:
 | Tab Actions trống trơn | Thiếu thư mục `.github` | Làm lại phần "Kiểm tra file ẩn" ở Bước 3 |
 | `version solving failed` | Xung đột package | Workflow đã tự chạy `pub upgrade`; nếu vẫn lỗi, gửi log cho tôi |
 | `Execution failed for task ':app:lintVitalRelease'` | Lint chặn build | Thêm vào khối `android { }` trong `build.gradle.kts`: `lint { checkReleaseBuilds = false }` |
+| `Missing class com.google.mlkit.vision.text.chinese...` / `minifyReleaseWithR8` | R8 quét thấy code tham chiếu bộ chữ Trung/Nhật/Hàn không nhúng trong APK | Đã xử lý sẵn bằng `proguard-rules.pro` trong workflow. Nếu vẫn lỗi, đổi lệnh build thành `flutter build apk --release --split-per-abi --no-shrink` |
 | `Could not resolve com.google.mlkit` | Mạng chập chờn phía GitHub | Bấm **Re-run all jobs** |
 | Build quá 30 phút bị cắt | Máy chủ chậm | Bấm **Re-run all jobs** |
 

@@ -76,6 +76,62 @@ jobs:
             grep -n "minSdk" android/app/build.gradle
           fi
 
+      # ----------------------------------------------------------------
+      # R8 (bo nen code khi build release) bao loi "Missing class" vi plugin
+      # ML Kit tham chieu ca 5 bo nhan dang (Latin/Trung/Nhat/Han/Devanagari)
+      # trong khi APK chi nhung thu vien Latin. Khai bao -dontwarn de R8 bo qua.
+      # ----------------------------------------------------------------
+      - name: Tao proguard-rules.pro
+        run: |
+          cat > android/app/proguard-rules.pro << 'EOF'
+          # ===== ML Kit Text Recognition =====
+          # Chi dung bo chu Latin, 4 bo con lai khong nhung vao APK.
+          -dontwarn com.google.mlkit.vision.text.chinese.**
+          -dontwarn com.google.mlkit.vision.text.devanagari.**
+          -dontwarn com.google.mlkit.vision.text.japanese.**
+          -dontwarn com.google.mlkit.vision.text.korean.**
+
+          -keep class com.google.mlkit.** { *; }
+          -keep class com.google.android.gms.internal.mlkit_vision_text_common.** { *; }
+          -keep class com.google.android.odml.** { *; }
+          -dontwarn com.google.mlkit.**
+
+          # ===== Flutter =====
+          -keep class io.flutter.app.** { *; }
+          -keep class io.flutter.plugin.** { *; }
+          -keep class io.flutter.embedding.** { *; }
+          -dontwarn io.flutter.embedding.**
+
+          # ===== sqflite / image_picker =====
+          -keep class com.tekartik.sqflite.** { *; }
+          -keep class io.flutter.plugins.imagepicker.** { *; }
+
+          # Giu ten dong/lop dung cho reflection cua Play Services
+          -keepattributes *Annotation*, InnerClasses, Signature, Exceptions
+          EOF
+          echo "--- Noi dung proguard-rules.pro ---"
+          cat android/app/proguard-rules.pro
+
+      - name: Noi proguard vao cau hinh build release
+        run: |
+          set -e
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i '0,/release {/s//release {\n            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")/' android/app/build.gradle.kts
+            GRADLE_FILE=android/app/build.gradle.kts
+          else
+            sed -i '0,/release {/s//release {\n            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"/' android/app/build.gradle
+            GRADLE_FILE=android/app/build.gradle
+          fi
+
+          echo "--- Khoi buildTypes sau khi va ---"
+          grep -n -A 8 "buildTypes" "$GRADLE_FILE"
+
+          # Dung ngay neu va that bai, thay vi de build chay 6 phut roi moi loi
+          if ! grep -q "proguard-rules.pro" "$GRADLE_FILE"; then
+            echo "::error::Khong chen duoc proguardFiles vao $GRADLE_FILE"
+            exit 1
+          fi
+
       - name: Tang RAM cho Gradle
         run: |
           echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> android/gradle.properties
