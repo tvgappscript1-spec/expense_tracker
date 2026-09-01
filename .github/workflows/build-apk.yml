@@ -1,0 +1,109 @@
+name: Build APK
+
+# Chay khi: push len nhanh main, HOAC bam nut thu cong trong tab Actions
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ----------------------------------------------------------------
+      - name: Lay ma nguon
+        uses: actions/checkout@v4
+
+      # ----------------------------------------------------------------
+      - name: Cai Java 17 (Gradle yeu cau)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # ----------------------------------------------------------------
+      - name: Cai Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Kiem tra phien ban
+        run: |
+          flutter --version
+          java -version
+
+      # ----------------------------------------------------------------
+      # Repo chi chua lib/ + pubspec.yaml + AndroidManifest.xml.
+      # Thu muc android/ do Flutter tu sinh theo dung phien ban SDK.
+      # Backup file rieng -> flutter create -> restore lai.
+      # ----------------------------------------------------------------
+      - name: Sinh lop nen Android
+        run: |
+          set -e
+          mkdir -p /tmp/backup
+          cp -r lib /tmp/backup/lib
+          cp pubspec.yaml /tmp/backup/pubspec.yaml
+          if [ -f android/app/src/main/AndroidManifest.xml ]; then
+            cp android/app/src/main/AndroidManifest.xml /tmp/backup/AndroidManifest.xml
+          fi
+
+          flutter create \
+            --platforms=android \
+            --org com.vuong.expense \
+            --project-name expense_tracker \
+            .
+
+          rm -rf lib
+          cp -r /tmp/backup/lib lib
+          cp /tmp/backup/pubspec.yaml pubspec.yaml
+          if [ -f /tmp/backup/AndroidManifest.xml ]; then
+            cp /tmp/backup/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          fi
+
+      # ----------------------------------------------------------------
+      - name: Nang minSdk len 24 (ML Kit OCR bat buoc >= 21)
+        run: |
+          set -e
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i -E 's/^([[:space:]]*)minSdk[[:space:]]*=.*/\1minSdk = 24/' android/app/build.gradle.kts
+            grep -n "minSdk" android/app/build.gradle.kts
+          else
+            sed -i -E 's/^([[:space:]]*)minSdkVersion.*/\1minSdkVersion 24/' android/app/build.gradle
+            grep -n "minSdk" android/app/build.gradle
+          fi
+
+      - name: Tang RAM cho Gradle
+        run: |
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> android/gradle.properties
+          echo "org.gradle.daemon=false" >> android/gradle.properties
+
+      # ----------------------------------------------------------------
+      - name: Tai package
+        run: |
+          flutter pub get || flutter pub upgrade --major-versions
+
+      - name: Phan tich ma nguon (khong chan build)
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings || true
+
+      # ----------------------------------------------------------------
+      - name: Build APK release
+        run: flutter build apk --release --split-per-abi
+
+      - name: Build them ban universal (chay moi may)
+        run: flutter build apk --release
+
+      - name: Liet ke file da build
+        run: ls -lh build/app/outputs/flutter-apk/
+
+      # ----------------------------------------------------------------
+      - name: Tai APK len Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: expense-tracker-apk
+          path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 30
+          if-no-files-found: error
