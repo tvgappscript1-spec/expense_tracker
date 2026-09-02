@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 
-import '../data/local/database_helper.dart';
-import '../data/models/budget_model.dart';
-import '../data/models/transaction_model.dart';
+import '../services/database_helper.dart';
+import '../models/budget_model.dart';
+import '../models/transaction_model.dart';
 
 /// Muc do canh bao ngan sach sau khi them 1 giao dich.
 enum BudgetAlertLevel {
@@ -41,9 +41,11 @@ class ExpenseProvider extends ChangeNotifier {
   final DatabaseHelper _db;
 
   late DateTime _selectedMonth;
+  DateTime _selectedDay = DateTime.now();
   List<TransactionModel> _transactions = <TransactionModel>[];
   BudgetModel? _budget;
   List<MonthlySummary> _trend = <MonthlySummary>[];
+  Map<DateTime, DailyTotal> _dailyTotals = <DateTime, DailyTotal>{};
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -53,7 +55,41 @@ class ExpenseProvider extends ChangeNotifier {
   // ==========================================================================
 
   DateTime get selectedMonth => _selectedMonth;
+  DateTime get selectedDay => _selectedDay;
   List<TransactionModel> get transactions => List.unmodifiable(_transactions);
+
+  // ==========================================================================
+  // DU LIEU CHO MAN HINH LICH
+  // ==========================================================================
+
+  /// Chuan hoa ve 00:00 de lam khoa Map — table_calendar tra ve DateTime co
+  /// gio phut khac nhau, so sanh truc tiep se khong khop.
+  static DateTime dayKeyOf(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  /// Tong thu/chi cua mot ngay bat ky. Khong co giao dich thi tra ve null.
+  DailyTotal? totalOfDay(DateTime day) => _dailyTotals[dayKeyOf(day)];
+
+  /// Danh sach giao dich cua ngay dang duoc chon tren lich.
+  List<TransactionModel> get transactionsOfSelectedDay =>
+      transactionsOfDay(_selectedDay);
+
+  List<TransactionModel> transactionsOfDay(DateTime day) {
+    final DateTime key = dayKeyOf(day);
+    return _transactions
+        .where((TransactionModel t) => t.dayKey == key)
+        .toList(growable: false);
+  }
+
+  /// table_calendar goi ham nay cho tung o ngay de ve marker ben duoi.
+  List<TransactionModel> eventsForDay(DateTime day) => transactionsOfDay(day);
+
+  void selectDay(DateTime day) {
+    final DateTime key = dayKeyOf(day);
+    if (_selectedDay == key) return;
+    _selectedDay = key;
+    notifyListeners();
+  }
+
   List<MonthlySummary> get trend => List.unmodifiable(_trend);
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -159,6 +195,8 @@ class ExpenseProvider extends ChangeNotifier {
       _transactions = items;
       _budget = budget;
       _errorMessage = null;
+      await _loadDailyTotals();
+      _syncSelectedDay();
       await _loadTrend();
     } on LocalDatabaseException catch (e) {
       _errorMessage = e.message;
@@ -180,6 +218,35 @@ class ExpenseProvider extends ChangeNotifier {
       loadMonth(DateTime(_selectedMonth.year, _selectedMonth.month + 1));
 
   Future<void> goToMonth(DateTime month) => loadMonth(month);
+
+  /// Nap tong thu/chi tung ngay trong thang dang xem (cho o lich).
+  Future<void> _loadDailyTotals() async {
+    try {
+      final List<DailyTotal> totals =
+          await _db.getDailyTotals(_selectedMonth.year, _selectedMonth.month);
+      _dailyTotals = <DateTime, DailyTotal>{
+        for (final DailyTotal t in totals) t.day: t,
+      };
+    } catch (e) {
+      debugPrint('loadDailyTotals error: $e');
+      _dailyTotals = <DateTime, DailyTotal>{};
+    }
+  }
+
+  /// Khi doi sang thang khac, keo ngay dang chon ve trong thang do.
+  /// Neu la thang hien tai thi chon dung hom nay, khong thi chon ngay 1.
+  void _syncSelectedDay() {
+    if (_selectedDay.year == _selectedMonth.year &&
+        _selectedDay.month == _selectedMonth.month) {
+      return;
+    }
+    final DateTime now = DateTime.now();
+    if (now.year == _selectedMonth.year && now.month == _selectedMonth.month) {
+      _selectedDay = DateTime(now.year, now.month, now.day);
+    } else {
+      _selectedDay = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
+    }
+  }
 
   /// Nap 6 thang gan nhat (tinh ca thang dang xem) cho bieu do cot.
   Future<void> _loadTrend({int months = 6}) async {
@@ -231,6 +298,7 @@ class ExpenseProvider extends ChangeNotifier {
           ..sort((TransactionModel a, TransactionModel b) =>
               b.date.compareTo(a.date));
       }
+      await _loadDailyTotals();
       await _loadTrend();
       _errorMessage = null;
       notifyListeners();
@@ -260,6 +328,7 @@ class ExpenseProvider extends ChangeNotifier {
       _transactions = _transactions
           .where((TransactionModel t) => t.id != id)
           .toList(growable: false);
+      await _loadDailyTotals();
       await _loadTrend();
       notifyListeners();
     } on LocalDatabaseException catch (e) {

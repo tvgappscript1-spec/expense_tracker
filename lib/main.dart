@@ -5,9 +5,9 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
 import 'core/theme/app_theme.dart';
-import 'features/budget/budget_setting_screen.dart';
-import 'features/root/root_screen.dart';
-import 'features/transaction/add_transaction_screen.dart';
+import 'views/budget_setting_screen.dart';
+import 'views/root_screen.dart';
+import 'views/add_transaction_screen.dart';
 import 'providers/expense_provider.dart';
 
 Future<void> main() async {

@@ -1,6 +1,9 @@
 name: expense_tracker
 description: "Ung dung quan ly thu chi ca nhan - offline first, co OCR quet hoa don."
 publish_to: 'none'
+# QUY TAC: moi lan phat hanh ban cap nhat PHAI tang so sau dau '+'
+# (buildNumber -> versionCode cua Android). Neu khong tang, Android coi la
+# cung mot ban va tu choi cai de.
 version: 1.0.0+1
 
 environment:
@@ -23,6 +26,9 @@ dependencies:
 
   # Charts
   fl_chart: ^0.69.0
+
+  # Lich thang
+  table_calendar: ^3.1.2
 
   # Format tien te / ngay thang.
   # Dung `any` co chu dich: flutter_localizations GHIM cung 1 phien ban intl

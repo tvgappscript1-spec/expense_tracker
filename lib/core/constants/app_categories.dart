@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../data/models/transaction_model.dart';
+import '../../models/transaction_model.dart';
 
 /// Danh muc giao dich.
 ///
