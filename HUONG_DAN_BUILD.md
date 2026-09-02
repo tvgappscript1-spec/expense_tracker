@@ -130,12 +130,12 @@ Mở `lib/services/database_helper.dart`:
 
 **Bước 1** — tăng version:
 ```dart
-static const int _dbVersion = 2;   // đang là 1
+static const int _dbVersion = 3;   // đang là 2
 ```
 
 **Bước 2** — thêm khối mới trong `_onUpgrade`, **không sửa khối cũ**:
 ```dart
-if (oldVersion < 2) {
+if (oldVersion < 3) {
   await db.execute(
     'ALTER TABLE $tableTransactions ADD COLUMN payment_method '
     "TEXT NOT NULL DEFAULT 'cash'",
@@ -166,7 +166,8 @@ lib/
 │   ├── database_helper.dart         # Singleton, SQLite, migration, getDailyTotals
 │   └── ocr_service.dart             # ML Kit + Regex bóc tách tiền/ngày/đơn vị
 ├── providers/
-│   └── expense_provider.dart        # ChangeNotifier: thu chi, ngân sách, lịch
+│   ├── expense_provider.dart        # ChangeNotifier: thu chi, ngân sách, lịch
+│   └── theme_provider.dart          # Chế độ Sáng/Tối, lưu xuống SQLite
 ├── views/
 │   ├── root_screen.dart             # Khung 3 tab + FAB + cảnh báo ngân sách
 │   ├── home_screen.dart             # Dashboard, thanh ngân sách
@@ -178,7 +179,8 @@ lib/
 │       ├── budget_progress_card.dart
 │       ├── summary_card.dart
 │       ├── transaction_tile.dart
-│       └── month_selector.dart
+│       ├── month_selector.dart
+│       └── theme_mode_sheet.dart
 └── core/
     ├── constants/app_categories.dart
     ├── theme/app_theme.dart
@@ -198,3 +200,4 @@ lib/
 | Tab Actions trống | Thiếu thư mục `.github` khi upload | Tạo thủ công `.github/workflows/build-apk.yml` |
 | Lịch không hiện số tiền | Chưa có giao dịch trong tháng | Thêm giao dịch rồi kéo xuống làm mới |
 | `LocaleDataException` khi mở lịch | Thiếu nạp locale | Kiểm tra `main.dart` còn dòng `initializeDateFormatting('vi_VN')` không |
+| Chọn giao diện xong, mở lại app bị mất | Bảng `settings` chưa tạo | Xem log `flutter run` có dòng `Nâng cấp CSDL: v1 -> v2` không |

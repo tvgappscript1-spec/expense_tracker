@@ -9,6 +9,7 @@ import 'views/budget_setting_screen.dart';
 import 'views/root_screen.dart';
 import 'views/add_transaction_screen.dart';
 import 'providers/expense_provider.dart';
+import 'providers/theme_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,15 +31,26 @@ class ExpenseTrackerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<ExpenseProvider>(
-      create: (_) => ExpenseProvider()..init(),
-      child: MaterialApp(
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<ExpenseProvider>(
+          create: (_) => ExpenseProvider()..init(),
+        ),
+        ChangeNotifierProvider<ThemeProvider>(
+          create: (_) => ThemeProvider()..load(),
+        ),
+      ],
+      // Chi rebuild MaterialApp khi doi che do giao dien, khong an theo
+      // moi lan danh sach giao dich thay doi.
+      child: Consumer<ThemeProvider>(
+        builder: (BuildContext context, ThemeProvider theme, Widget? _) =>
+            MaterialApp(
         title: 'Quản lý chi tiêu',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
-        // Tu dong doi Sang/Toi theo cai dat he thong.
-        themeMode: ThemeMode.system,
+        // Nguoi dung tu chon: theo he thong / luon sang / luon toi.
+        themeMode: theme.themeMode,
         locale: const Locale('vi', 'VN'),
         supportedLocales: const <Locale>[
           Locale('vi', 'VN'),
@@ -55,6 +67,7 @@ class ExpenseTrackerApp extends StatelessWidget {
           AddTransactionScreen.routeName: (_) => const AddTransactionScreen(),
           BudgetSettingScreen.routeName: (_) => const BudgetSettingScreen(),
         },
+        ),
       ),
     );
   }

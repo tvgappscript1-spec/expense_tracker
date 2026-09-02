@@ -40,10 +40,14 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._internal();
 
   static const String _dbName = 'expense_tracker.db';
-  static const int _dbVersion = 1;
+  static const int _dbVersion = 2;
 
   static const String tableTransactions = 'transactions';
   static const String tableBudgets = 'budgets';
+  static const String tableSettings = 'settings';
+
+  /// Khoa cai dat da dung trong bang settings.
+  static const String keyThemeMode = 'theme_mode';
 
   Database? _db;
   Completer<Database>? _opening;
@@ -124,6 +128,13 @@ class DatabaseHelper {
       )
     ''');
 
+    batch.execute('''
+      CREATE TABLE $tableSettings (
+        setting_key   TEXT PRIMARY KEY,
+        setting_value TEXT NOT NULL
+      )
+    ''');
+
     await batch.commit(noResult: true);
   }
 
@@ -151,23 +162,25 @@ class DatabaseHelper {
     debugPrint('Nâng cấp CSDL: v$oldVersion -> v$newVersion');
 
     try {
+      // ---- v1 -> v2: them bang luu cai dat (che do Sang/Toi) ----
+      // Chi CREATE TABLE, khong dung toi transactions/budgets nen du lieu chi
+      // tieu cu duoc giu nguyen 100%.
+      if (oldVersion < 2) {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS $tableSettings (
+            setting_key   TEXT PRIMARY KEY,
+            setting_value TEXT NOT NULL
+          )
+        ''');
+      }
+
       // ---- MAU CHO LAN NANG CAP TIEP THEO (dang comment, mo khi can) ----
       //
-      // if (oldVersion < 2) {
+      // if (oldVersion < 3) {
       //   await db.execute(
       //     'ALTER TABLE $tableTransactions ADD COLUMN payment_method '
       //     "TEXT NOT NULL DEFAULT 'cash'",
       //   );
-      // }
-      //
-      // if (oldVersion < 3) {
-      //   await db.execute('''
-      //     CREATE TABLE IF NOT EXISTS saving_goals (
-      //       id     INTEGER PRIMARY KEY AUTOINCREMENT,
-      //       name   TEXT    NOT NULL,
-      //       target REAL    NOT NULL
-      //     )
-      //   ''');
       // }
     } catch (e) {
       // Migration hong nguy hiem hon la khong migration: nem loi ro rang de
@@ -424,6 +437,47 @@ class DatabaseHelper {
       );
     } catch (e) {
       throw LocalDatabaseException('Không xoá được hạn mức ngân sách.', e);
+    }
+  }
+
+  // ==========================================================================
+  // SETTINGS (cai dat chung: che do Sang/Toi...)
+  // ==========================================================================
+
+  /// Doc mot cai dat. Tra ve null neu chua tung luu.
+  /// Khong nem loi ra ngoai: cai dat hong khong duoc lam chet app, chi can
+  /// quay ve gia tri mac dinh.
+  Future<String?> getSetting(String key) async {
+    try {
+      final Database db = await database;
+      final List<Map<String, dynamic>> rows = await db.query(
+        tableSettings,
+        columns: <String>['setting_value'],
+        where: 'setting_key = ?',
+        whereArgs: <Object?>[key],
+        limit: 1,
+      );
+      if (rows.isEmpty) return null;
+      return rows.first['setting_value'] as String?;
+    } catch (e) {
+      debugPrint('getSetting("$key") lỗi: $e');
+      return null;
+    }
+  }
+
+  /// Ghi de mot cai dat.
+  Future<bool> setSetting(String key, String value) async {
+    try {
+      final Database db = await database;
+      await db.insert(
+        tableSettings,
+        <String, dynamic>{'setting_key': key, 'setting_value': value},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('setSetting("$key") lỗi: $e');
+      return false;
     }
   }
 

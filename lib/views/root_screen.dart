@@ -4,11 +4,13 @@ import 'package:provider/provider.dart';
 import '../core/theme/app_theme.dart';
 import '../core/utils/formatters.dart';
 import '../providers/expense_provider.dart';
+import '../providers/theme_provider.dart';
 import 'budget_setting_screen.dart';
 import 'expense_calendar_screen.dart';
 import 'home_screen.dart';
 import 'stats_screen.dart';
 import 'add_transaction_screen.dart';
+import 'widgets/theme_mode_sheet.dart';
 
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key});
@@ -120,6 +122,16 @@ class _RootScreenState extends State<RootScreen> {
       appBar: AppBar(
         title: Text(_titles[_index]),
         actions: <Widget>[
+          // Mo bang chon che do giao dien.
+          Consumer<ThemeProvider>(
+            builder: (BuildContext context, ThemeProvider theme, Widget? _) {
+              return IconButton(
+                tooltip: 'Giao diện: ${theme.label}',
+                icon: Icon(theme.icon),
+                onPressed: () => ThemeModeSheet.show(context),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Đặt hạn mức chi tiêu',
             icon: const Icon(Icons.savings_outlined),
