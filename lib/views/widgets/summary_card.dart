@@ -9,11 +9,18 @@ class SummaryCard extends StatelessWidget {
     required this.income,
     required this.expense,
     required this.balance,
+    required this.hidden,
+    required this.onToggleHidden,
   });
 
   final double income;
   final double expense;
   final double balance;
+  final bool hidden;
+  final VoidCallback onToggleHidden;
+
+  /// Che so tien bang dau cham khi nguoi dung bat an so du.
+  String _show(double value) => hidden ? '••••••' : Formatters.money(value);
 
   @override
   Widget build(BuildContext context) {
@@ -37,20 +44,39 @@ class SummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            'Số dư trong tháng',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: scheme.onPrimaryContainer.withOpacity(0.75),
-            ),
+          Row(
+            children: <Widget>[
+              Text(
+                'Số dư trong tháng',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: scheme.onPrimaryContainer.withOpacity(0.75),
+                ),
+              ),
+              const Spacer(),
+              InkWell(
+                onTap: onToggleHidden,
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    hidden
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                    size: 20,
+                    color: scheme.onPrimaryContainer.withOpacity(0.75),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
-              Formatters.money(balance),
+              _show(balance),
               style: TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.w800,
@@ -69,6 +95,7 @@ class SummaryCard extends StatelessWidget {
                   icon: Icons.south_west_rounded,
                   label: 'Thu vào',
                   value: income,
+                  hidden: hidden,
                   color: AppTheme.incomeColor,
                 ),
               ),
@@ -78,6 +105,7 @@ class SummaryCard extends StatelessWidget {
                   icon: Icons.north_east_rounded,
                   label: 'Chi ra',
                   value: expense,
+                  hidden: hidden,
                   color: AppTheme.expenseColor,
                 ),
               ),
@@ -94,12 +122,14 @@ class _MiniStat extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    required this.hidden,
     required this.color,
   });
 
   final IconData icon;
   final String label;
   final double value;
+  final bool hidden;
   final Color color;
 
   @override
@@ -140,7 +170,7 @@ class _MiniStat extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    Formatters.money(value),
+                    hidden ? "••••" : Formatters.money(value),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,

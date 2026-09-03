@@ -84,6 +84,8 @@ class HomeScreen extends StatelessWidget {
                   income: provider.totalIncome,
                   expense: provider.totalExpense,
                   balance: provider.balance,
+                  hidden: provider.balanceHidden,
+                  onToggleHidden: provider.toggleBalanceHidden,
                 ),
                 const SizedBox(height: 12),
                 const BudgetProgressCard(),

@@ -46,6 +46,8 @@ class ExpenseProvider extends ChangeNotifier {
   BudgetModel? _budget;
   List<MonthlySummary> _trend = <MonthlySummary>[];
   Map<DateTime, DailyTotal> _dailyTotals = <DateTime, DailyTotal>{};
+  List<CategoryStat> _expenseStats = <CategoryStat>[];
+  bool _balanceHidden = false;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -159,24 +161,20 @@ class ExpenseProvider extends ChangeNotifier {
     };
   }
 
-  /// Tong chi theo danh muc trong thang dang xem (cho bieu do tron).
-  Map<String, double> get expenseByCategory {
-    final Map<String, double> result = <String, double>{};
-    for (final TransactionModel t in _transactions) {
-      if (!t.type.isExpense) continue;
-      result[t.categoryId] = (result[t.categoryId] ?? 0) + t.amount;
-    }
-    final List<MapEntry<String, double>> entries = result.entries.toList()
-      ..sort((MapEntry<String, double> a, MapEntry<String, double> b) =>
-          b.value.compareTo(a.value));
-    return <String, double>{for (final MapEntry<String, double> e in entries) e.key: e.value};
-  }
+  /// Thong ke chi theo danh muc cha (kem con) cho bieu do tron phan cap.
+  /// Nap tu DB moi khi doi thang, cache tai day.
+  List<CategoryStat> get expenseStats => List.unmodifiable(_expenseStats);
+
+  bool get hasExpenseStats => _expenseStats.isNotEmpty;
 
   // ==========================================================================
   // LOAD DU LIEU
   // ==========================================================================
 
-  Future<void> init() => loadMonth(_selectedMonth);
+  Future<void> init() async {
+    await loadBalanceHidden();
+    await loadMonth(_selectedMonth);
+  }
 
   Future<void> loadMonth(DateTime month, {bool showLoading = true}) async {
     _selectedMonth = DateTime(month.year, month.month);
@@ -196,6 +194,7 @@ class ExpenseProvider extends ChangeNotifier {
       _budget = budget;
       _errorMessage = null;
       await _loadDailyTotals();
+      await _loadExpenseStats();
       _syncSelectedDay();
       await _loadTrend();
     } on LocalDatabaseException catch (e) {
@@ -218,6 +217,22 @@ class ExpenseProvider extends ChangeNotifier {
       loadMonth(DateTime(_selectedMonth.year, _selectedMonth.month + 1));
 
   Future<void> goToMonth(DateTime month) => loadMonth(month);
+
+  /// Nap thong ke chi theo danh muc cha (phan cap) tu DB.
+  Future<void> _loadExpenseStats() async {
+    try {
+      final DateTime start = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
+      final DateTime end = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
+      _expenseStats = await _db.statsByParentCategory(
+        TransactionType.expense,
+        start,
+        end,
+      );
+    } catch (e) {
+      debugPrint('loadExpenseStats error: $e');
+      _expenseStats = <CategoryStat>[];
+    }
+  }
 
   /// Nap tong thu/chi tung ngay trong thang dang xem (cho o lich).
   Future<void> _loadDailyTotals() async {
@@ -299,6 +314,7 @@ class ExpenseProvider extends ChangeNotifier {
               b.date.compareTo(a.date));
       }
       await _loadDailyTotals();
+      await _loadExpenseStats();
       await _loadTrend();
       _errorMessage = null;
       notifyListeners();
@@ -329,6 +345,7 @@ class ExpenseProvider extends ChangeNotifier {
           .where((TransactionModel t) => t.id != id)
           .toList(growable: false);
       await _loadDailyTotals();
+      await _loadExpenseStats();
       await _loadTrend();
       notifyListeners();
     } on LocalDatabaseException catch (e) {
@@ -400,6 +417,27 @@ class ExpenseProvider extends ChangeNotifier {
       _errorMessage = e.message;
       notifyListeners();
     }
+  }
+
+  // ==========================================================================
+  // AN / HIEN SO DU
+  // ==========================================================================
+
+  bool get balanceHidden => _balanceHidden;
+
+  Future<void> loadBalanceHidden() async {
+    final String? v = await _db.getSetting(DatabaseHelper.keyBalanceHidden);
+    _balanceHidden = v == '1';
+    notifyListeners();
+  }
+
+  Future<void> toggleBalanceHidden() async {
+    _balanceHidden = !_balanceHidden;
+    notifyListeners();
+    await _db.setSetting(
+      DatabaseHelper.keyBalanceHidden,
+      _balanceHidden ? '1' : '0',
+    );
   }
 
   void clearError() {

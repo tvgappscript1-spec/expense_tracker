@@ -6,8 +6,10 @@ import 'package:provider/provider.dart';
 
 import 'core/theme/app_theme.dart';
 import 'views/budget_setting_screen.dart';
-import 'views/root_screen.dart';
+import 'views/main_screen.dart';
 import 'views/add_transaction_screen.dart';
+import 'providers/category_provider.dart';
+import 'providers/debt_provider.dart';
 import 'providers/expense_provider.dart';
 import 'providers/theme_provider.dart';
 
@@ -33,8 +35,14 @@ class ExpenseTrackerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider<CategoryProvider>(
+          create: (_) => CategoryProvider()..load(),
+        ),
         ChangeNotifierProvider<ExpenseProvider>(
           create: (_) => ExpenseProvider()..init(),
+        ),
+        ChangeNotifierProvider<DebtProvider>(
+          create: (_) => DebtProvider()..load(),
         ),
         ChangeNotifierProvider<ThemeProvider>(
           create: (_) => ThemeProvider()..load(),
@@ -61,9 +69,9 @@ class ExpenseTrackerApp extends StatelessWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        initialRoute: RootScreen.routeName,
+        initialRoute: MainScreen.routeName,
         routes: <String, WidgetBuilder>{
-          RootScreen.routeName: (_) => const RootScreen(),
+          MainScreen.routeName: (_) => const MainScreen(),
           AddTransactionScreen.routeName: (_) => const AddTransactionScreen(),
           BudgetSettingScreen.routeName: (_) => const BudgetSettingScreen(),
         },

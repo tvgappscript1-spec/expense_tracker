@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 class AppTheme {
   AppTheme._();
 
-  static const Color seed = Color(0xFF00695C);
+  static const Color seed = Color(0xFF2DBE60); // Money Lover Green
 
   // Mau ngu nghia dung chung cho ca 2 che do sang/toi.
   static const Color incomeColor = Color(0xFF2E7D32);

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_categories.dart';
+import 'package:provider/provider.dart';
+
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
+import '../../models/category_model.dart';
 import '../../models/transaction_model.dart';
+import '../../providers/category_provider.dart';
 
 class TransactionTile extends StatelessWidget {
   const TransactionTile({
@@ -19,7 +22,9 @@ class TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ExpenseCategory category = AppCategories.byId(item.categoryId);
+    final CategoryProvider categoryProvider = context.watch<CategoryProvider>();
+    final CategoryModel category = categoryProvider.byId(item.categoryId);
+    final String categoryLabel = categoryProvider.displayName(item.categoryId);
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final bool isExpense = item.type.isExpense;
 
@@ -90,7 +95,7 @@ class TransactionTile extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
                       Text(
-                        item.title.isEmpty ? category.name : item.title,
+                        item.title.isEmpty ? categoryLabel : item.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -101,8 +106,8 @@ class TransactionTile extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         item.note.isEmpty
-                            ? category.name
-                            : '${category.name} · ${item.note}',
+                            ? categoryLabel
+                            : '$categoryLabel · ${item.note}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(

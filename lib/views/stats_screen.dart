@@ -2,10 +2,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/constants/app_categories.dart';
 import '../core/theme/app_theme.dart';
 import '../core/utils/formatters.dart';
 import '../providers/expense_provider.dart';
+import '../services/database_helper.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -17,10 +17,13 @@ class StatsScreen extends StatefulWidget {
 class _StatsScreenState extends State<StatsScreen> {
   int _touchedIndex = -1;
 
+  /// Id danh muc cha dang duoc xo ra xem con (null = chua xo cai nao).
+  int? _expandedParentId;
+
   @override
   Widget build(BuildContext context) {
     final ExpenseProvider provider = context.watch<ExpenseProvider>();
-    final Map<String, double> byCategory = provider.expenseByCategory;
+    final List<CategoryStat> stats = provider.expenseStats;
 
     return RefreshIndicator(
       onRefresh: provider.refresh,
@@ -34,14 +37,19 @@ class _StatsScreenState extends State<StatsScreen> {
                 'Tháng ${Formatters.monthYear.format(provider.selectedMonth)}',
           ),
           const SizedBox(height: 12),
-          if (byCategory.isEmpty)
+          if (stats.isEmpty)
             const _EmptyChart(message: 'Chưa có khoản chi nào trong tháng này.')
           else
             _CategoryPieSection(
-              data: byCategory,
+              stats: stats,
               total: provider.totalExpense,
               touchedIndex: _touchedIndex,
+              expandedParentId: _expandedParentId,
               onTouch: (int index) => setState(() => _touchedIndex = index),
+              onToggleExpand: (int parentId) => setState(() {
+                _expandedParentId =
+                    _expandedParentId == parentId ? null : parentId;
+              }),
             ),
           const SizedBox(height: 28),
           const _SectionTitle(
@@ -60,26 +68,29 @@ class _StatsScreenState extends State<StatsScreen> {
 }
 
 // ============================================================================
-// BIEU DO TRON
+// BIEU DO TRON PHAN CAP (bam cha -> xo con)
 // ============================================================================
 
 class _CategoryPieSection extends StatelessWidget {
   const _CategoryPieSection({
-    required this.data,
+    required this.stats,
     required this.total,
     required this.touchedIndex,
+    required this.expandedParentId,
     required this.onTouch,
+    required this.onToggleExpand,
   });
 
-  final Map<String, double> data;
+  final List<CategoryStat> stats;
   final double total;
   final int touchedIndex;
+  final int? expandedParentId;
   final void Function(int) onTouch;
+  final void Function(int) onToggleExpand;
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme scheme = Theme.of(context).colorScheme;
-    final List<MapEntry<String, double>> entries = data.entries.toList();
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 20, 12, 16),
@@ -108,24 +119,19 @@ class _CategoryPieSection extends StatelessWidget {
                           onTouch(-1);
                           return;
                         }
-                        onTouch(
-                          response.touchedSection!.touchedSectionIndex,
-                        );
+                        onTouch(response.touchedSection!.touchedSectionIndex);
                       },
                     ),
                     sections: List<PieChartSectionData>.generate(
-                      entries.length,
+                      stats.length,
                       (int i) {
-                        final ExpenseCategory category =
-                            AppCategories.byId(entries[i].key);
-                        final double value = entries[i].value;
+                        final CategoryStat stat = stats[i];
                         final double percent =
-                            total <= 0 ? 0 : (value / total) * 100;
+                            total <= 0 ? 0 : (stat.total / total) * 100;
                         final bool touched = i == touchedIndex;
-
                         return PieChartSectionData(
-                          value: value,
-                          color: category.color,
+                          value: stat.total,
+                          color: stat.color,
                           radius: touched ? 62 : 52,
                           title: percent < 6
                               ? ''
@@ -165,51 +171,125 @@ class _CategoryPieSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
+          // Danh sach cha; bam cha co con -> xo ra danh sach con ben duoi.
           Column(
-            children: List<Widget>.generate(entries.length, (int i) {
-              final ExpenseCategory category =
-                  AppCategories.byId(entries[i].key);
-              final double value = entries[i].value;
-              final double percent = total <= 0 ? 0 : (value / total) * 100;
+            children: List<Widget>.generate(stats.length, (int i) {
+              final CategoryStat parent = stats[i];
+              final double percent =
+                  total <= 0 ? 0 : (parent.total / total) * 100;
+              final bool expanded = expandedParentId == parent.categoryId;
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
-                child: Row(
-                  children: <Widget>[
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: category.color,
-                        borderRadius: BorderRadius.circular(3),
+              return Column(
+                children: <Widget>[
+                  InkWell(
+                    onTap: parent.hasChildren
+                        ? () => onToggleExpand(parent.categoryId)
+                        : null,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 7,
+                        horizontal: 4,
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: parent.color,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Icon(parent.icon, size: 17, color: parent.color),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              parent.name,
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${percent.toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            Formatters.money(parent.total),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (parent.hasChildren)
+                            Icon(
+                              expanded
+                                  ? Icons.expand_less_rounded
+                                  : Icons.expand_more_rounded,
+                              size: 20,
+                              color: scheme.onSurfaceVariant,
+                            )
+                          else
+                            const SizedBox(width: 20),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Icon(category.icon, size: 16, color: category.color),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        category.name,
-                        style: const TextStyle(fontSize: 13.5),
-                      ),
-                    ),
-                    Text(
-                      '${percent.toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      Formatters.money(value),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  if (expanded)
+                    ...parent.children.map((CategoryStat child) {
+                      final double childPercent = parent.total <= 0
+                          ? 0
+                          : (child.total / parent.total) * 100;
+                      return Padding(
+                        padding: const EdgeInsets.only(
+                          left: 34,
+                          top: 2,
+                          bottom: 2,
+                        ),
+                        child: Row(
+                          children: <Widget>[
+                            Icon(child.icon, size: 15, color: parent.color),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                child.name,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '${childPercent.toStringAsFixed(0)}%',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              Formatters.money(child.total),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  Divider(
+                    height: 1,
+                    color: scheme.outlineVariant.withOpacity(0.3),
+                  ),
+                ],
               );
             }),
           ),

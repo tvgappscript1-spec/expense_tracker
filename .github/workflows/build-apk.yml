@@ -230,10 +230,10 @@ jobs:
 
       # ----------------------------------------------------------------
       - name: Build APK release
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi --no-tree-shake-icons
 
       - name: Build them ban universal (chay moi may)
-        run: flutter build apk --release
+        run: flutter build apk --release --no-tree-shake-icons
 
       - name: Liet ke file da build
         run: ls -lh build/app/outputs/flutter-apk/

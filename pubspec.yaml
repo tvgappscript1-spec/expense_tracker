@@ -4,7 +4,7 @@ publish_to: 'none'
 # QUY TAC: moi lan phat hanh ban cap nhat PHAI tang so sau dau '+'
 # (buildNumber -> versionCode cua Android). Neu khong tang, Android coi la
 # cung mot ban va tu choi cai de.
-version: 1.1.0+2
+version: 1.2.0+3
 
 environment:
   sdk: '>=3.3.0 <4.0.0'

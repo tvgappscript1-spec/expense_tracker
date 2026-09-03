@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/constants/app_categories.dart';
 import '../core/theme/app_theme.dart';
 import '../core/utils/formatters.dart';
+import '../models/category_model.dart';
 import '../models/transaction_model.dart';
+import '../providers/category_provider.dart';
 import '../providers/expense_provider.dart';
 import '../services/ocr_service.dart';
+import 'widgets/category_selector_widget.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({super.key, this.editing});
@@ -28,7 +30,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final OcrService _ocrService = OcrService();
 
   TransactionType _type = TransactionType.expense;
-  String _categoryId = AppCategories.expense.first.id;
+  int? _categoryId;
   DateTime _date = DateTime.now();
 
   bool _isSaving = false;
@@ -49,6 +51,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       _noteController.text = editing.note;
       _amountController.text =
           Formatters.plainNumber.format(editing.amount.round());
+    } else {
+      // Lay danh muc mac dinh sau khi CategoryProvider da nap xong.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final CategoryProvider cp = context.read<CategoryProvider>();
+        setState(() => _categoryId ??= cp.defaultCategoryId(_type));
+      });
     }
   }
 
@@ -196,11 +205,21 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   void _onTypeChanged(TransactionType type) {
+    final CategoryProvider cp = context.read<CategoryProvider>();
     setState(() {
       _type = type;
-      // Doi nhom danh muc tuong ung, tranh luu danh muc sai loai.
-      _categoryId = AppCategories.byType(type).first.id;
+      // Doi danh muc ve mac dinh cua loai moi, tranh luu danh muc sai loai.
+      _categoryId = cp.defaultCategoryId(type);
     });
+  }
+
+  Future<void> _pickCategory() async {
+    final int? picked = await CategorySelector.pick(
+      context,
+      type: _type,
+      selectedId: _categoryId,
+    );
+    if (picked != null) setState(() => _categoryId = picked);
   }
 
   Future<void> _save() async {
@@ -210,9 +229,17 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final ExpenseProvider provider = context.read<ExpenseProvider>();
     final NavigatorState navigator = Navigator.of(context);
 
+    final CategoryProvider cp = context.read<CategoryProvider>();
+    final int? categoryId = _categoryId;
+    if (categoryId == null) {
+      setState(() => _isSaving = false);
+      _showMessage('Vui lòng chọn danh mục.', isError: true);
+      return;
+    }
+
     final double amount = Formatters.parseInput(_amountController.text);
     final String title = _titleController.text.trim().isEmpty
-        ? AppCategories.byId(_categoryId).name
+        ? cp.byId(categoryId).name
         : _titleController.text.trim();
 
     try {
@@ -221,7 +248,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           title: title,
           amount: amount,
           date: _date,
-          categoryId: _categoryId,
+          categoryId: categoryId,
           type: _type,
           note: _noteController.text.trim(),
         );
@@ -233,7 +260,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           title: title,
           amount: amount,
           date: _date,
-          categoryId: _categoryId,
+          categoryId: categoryId,
           type: _type,
           note: _noteController.text.trim(),
         );
@@ -267,7 +294,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     final ColorScheme scheme = Theme.of(context).colorScheme;
-    final List<ExpenseCategory> categories = AppCategories.byType(_type);
+    final CategoryProvider categoryProvider = context.watch<CategoryProvider>();
+    final CategoryModel? selectedCategory =
+        _categoryId == null ? null : categoryProvider.byId(_categoryId!);
 
     return Scaffold(
       appBar: AppBar(
@@ -413,30 +442,59 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: categories.map((ExpenseCategory category) {
-                  final bool selected = category.id == _categoryId;
-                  return ChoiceChip(
-                    selected: selected,
-                    onSelected: (_) =>
-                        setState(() => _categoryId = category.id),
-                    avatar: Icon(
-                      category.icon,
-                      size: 18,
-                      color: selected ? Colors.white : category.color,
+              InkWell(
+                onTap: _pickCategory,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHighest.withOpacity(0.45),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: selectedCategory?.color.withOpacity(0.5) ??
+                          scheme.outlineVariant,
+                      width: 1.2,
                     ),
-                    label: Text(category.name),
-                    labelStyle: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : scheme.onSurface,
-                    ),
-                    selectedColor: category.color,
-                    showCheckmark: false,
-                  );
-                }).toList(),
+                  ),
+                  child: Row(
+                    children: <Widget>[
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: (selectedCategory?.color ?? scheme.primary)
+                              .withOpacity(0.16),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          selectedCategory?.icon ?? Icons.category_rounded,
+                          color: selectedCategory?.color ?? scheme.primary,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _categoryId == null
+                              ? 'Chọn danh mục'
+                              : categoryProvider.displayName(_categoryId!),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: _categoryId == null
+                                ? scheme.onSurfaceVariant
+                                : scheme.onSurface,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 18),
 

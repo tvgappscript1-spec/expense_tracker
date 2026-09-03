@@ -76,6 +76,17 @@ KEYSTORE_BASE64"* nghĩa là Secrets chưa đúng tên — APK build ra vẫn c�
 
 ## PHẦN C — QUY TẮC CẬP NHẬT APK
 
+### C0. Lệnh build đã có sẵn cờ bắt buộc
+
+Vì danh mục do người dùng tạo được, icon phải lưu bằng codePoint động. Điều này
+**bắt buộc** phải có cờ `--no-tree-shake-icons` trong lệnh build, nếu không APK
+sẽ báo lỗi khi build hoặc mất icon khi chạy. Workflow đã thêm sẵn cờ này ở cả
+hai lệnh build. Nếu tự build tay, nhớ thêm:
+
+```bash
+flutter build apk --release --split-per-abi --no-tree-shake-icons
+```
+
 ### C1. Bắt buộc tăng số build trước mỗi lần phát hành
 
 Mở `pubspec.yaml`, dòng:
@@ -130,12 +141,12 @@ Mở `lib/services/database_helper.dart`:
 
 **Bước 1** — tăng version:
 ```dart
-static const int _dbVersion = 3;   // đang là 2
+static const int _dbVersion = 4;   // đang là 3
 ```
 
 **Bước 2** — thêm khối mới trong `_onUpgrade`, **không sửa khối cũ**:
 ```dart
-if (oldVersion < 3) {
+if (oldVersion < 4) {
   await db.execute(
     'ALTER TABLE $tableTransactions ADD COLUMN payment_method '
     "TEXT NOT NULL DEFAULT 'cash'",
@@ -160,26 +171,33 @@ Nguyên tắc:
 lib/
 ├── main.dart                        # Provider + Theme + Router + locale vi_VN
 ├── models/
-│   ├── transaction_model.dart       # toMap / fromMap / copyWith
-│   └── budget_model.dart
+│   ├── transaction_model.dart       # categoryId (int) trỏ tới danh mục
+│   ├── budget_model.dart
+│   ├── category_model.dart          # danh mục 2 cấp cha-con
+│   └── debt_model.dart              # khoản vay / cho vay
 ├── services/
-│   ├── database_helper.dart         # Singleton, SQLite, migration, getDailyTotals
-│   └── ocr_service.dart             # ML Kit + Regex bóc tách tiền/ngày/đơn vị
+│   ├── database_helper.dart         # Singleton, migration v1→v3, seeding, thống kê phân cấp
+│   ├── ocr_service.dart             # ML Kit + Regex bóc tách tiền/ngày/đơn vị
+│   └── seed/category_seed.dart      # bộ danh mục 2 cấp mặc định
 ├── providers/
-│   ├── expense_provider.dart        # ChangeNotifier: thu chi, ngân sách, lịch
+│   ├── expense_provider.dart        # thu chi, ngân sách, lịch, ẩn số dư, thống kê
+│   ├── category_provider.dart       # danh mục 2 cấp
+│   ├── debt_provider.dart           # sổ nợ, tất toán
 │   └── theme_provider.dart          # Chế độ Sáng/Tối, lưu xuống SQLite
 ├── views/
-│   ├── root_screen.dart             # Khung 3 tab + FAB + cảnh báo ngân sách
-│   ├── home_screen.dart             # Dashboard, thanh ngân sách
+│   ├── main_screen.dart             # Bottom bar có FAB tròn giữa + 4 tab
+│   ├── home_screen.dart             # Dashboard, số dư (ẩn/hiện), ngân sách
 │   ├── expense_calendar_screen.dart # Lịch tháng, tổng tiền từng ô ngày
+│   ├── debt_screen.dart             # Sổ nợ / cho vay
 │   ├── add_transaction_screen.dart  # Form nhập + nút quét OCR
 │   ├── budget_setting_screen.dart   # Đặt hạn mức
-│   ├── stats_screen.dart            # Biểu đồ tròn + cột
+│   ├── stats_screen.dart            # Biểu đồ tròn phân cấp + cột
 │   └── widgets/
 │       ├── budget_progress_card.dart
 │       ├── summary_card.dart
 │       ├── transaction_tile.dart
 │       ├── month_selector.dart
+│       ├── category_selector_widget.dart
 │       └── theme_mode_sheet.dart
 └── core/
     ├── constants/app_categories.dart

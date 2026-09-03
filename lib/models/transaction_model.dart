@@ -20,7 +20,12 @@ class TransactionModel {
   final String title;
   final double amount;
   final DateTime date;
-  final String categoryId;
+  /// Id danh muc CON trong bang categories (danh muc 2 cap).
+  final int categoryId;
+
+  /// Ma danh muc cu dang chuoi (food/transport...) - chi de doc du lieu v1
+  /// da luu truoc khi len danh muc 2 cap. Ban ghi moi de rong.
+  final String legacyCategory;
   final TransactionType type;
   final String note;
   final DateTime createdAt;
@@ -32,6 +37,7 @@ class TransactionModel {
     required this.date,
     required this.categoryId,
     required this.type,
+    this.legacyCategory = '',
     this.note = '',
     required this.createdAt,
   });
@@ -40,7 +46,7 @@ class TransactionModel {
     required String title,
     required double amount,
     required DateTime date,
-    required String categoryId,
+    required int categoryId,
     required TransactionType type,
     String note = '',
   }) {
@@ -63,7 +69,8 @@ class TransactionModel {
       'title': title,
       'amount': amount,
       'date': date.millisecondsSinceEpoch,
-      'category_id': categoryId,
+      'category_ref': categoryId,
+      'category_id': legacyCategory,
       'type': type.index,
       'note': note,
       'created_at': createdAt.millisecondsSinceEpoch,
@@ -78,7 +85,8 @@ class TransactionModel {
       date: DateTime.fromMillisecondsSinceEpoch(
         (map['date'] as int?) ?? DateTime.now().millisecondsSinceEpoch,
       ),
-      categoryId: (map['category_id'] as String?) ?? 'other',
+      categoryId: (map['category_ref'] as int?) ?? 0,
+      legacyCategory: (map['category_id'] as String?) ?? '',
       type: TransactionTypeX.fromIndex((map['type'] as int?) ?? 0),
       note: (map['note'] as String?) ?? '',
       createdAt: DateTime.fromMillisecondsSinceEpoch(
@@ -92,7 +100,8 @@ class TransactionModel {
     String? title,
     double? amount,
     DateTime? date,
-    String? categoryId,
+    int? categoryId,
+    String? legacyCategory,
     TransactionType? type,
     String? note,
     DateTime? createdAt,
@@ -103,6 +112,7 @@ class TransactionModel {
       amount: amount ?? this.amount,
       date: date ?? this.date,
       categoryId: categoryId ?? this.categoryId,
+      legacyCategory: legacyCategory ?? this.legacyCategory,
       type: type ?? this.type,
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
