@@ -39,8 +39,10 @@ class CategoryStat {
     required this.children,
   });
 
-  IconData get icon => IconData(iconCodePoint, fontFamily: 'MaterialIcons');
-  Color get color => Color(colorValue);
+  // LUU Y: khong dat getter tra ve IconData/Color o day. Tang du lieu (DB)
+  // khong phu thuoc thu vien giao dien. Tang UI tu chuyen iconCodePoint ->
+  // IconData va colorValue -> Color qua extension CategoryStatUi (o file
+  // stats_screen.dart).
   bool get hasChildren => children.isNotEmpty;
 }
 
@@ -710,7 +712,7 @@ class DatabaseHelper {
             categoryId: parentId,
             name: (row['parent_name'] as String?) ?? 'Khác',
             iconCodePoint: (row['parent_icon'] as int?) ??
-                Icons.category_rounded.codePoint,
+                0xf624 /* Icons.category_rounded */,
             colorValue: (row['parent_color'] as int?) ?? 0xFF78909C,
             total: 0,
             children: <CategoryStat>[],
@@ -727,7 +729,7 @@ class DatabaseHelper {
               categoryId: (row['child_id'] as int?) ?? 0,
               name: (row['child_name'] as String?) ?? '',
               iconCodePoint: (row['child_icon'] as int?) ??
-                  Icons.category_rounded.codePoint,
+                  0xf624 /* Icons.category_rounded */,
               colorValue: parent.colorValue,
               total: total,
               children: const <CategoryStat>[],

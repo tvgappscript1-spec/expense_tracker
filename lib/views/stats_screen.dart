@@ -7,6 +7,13 @@ import '../core/utils/formatters.dart';
 import '../providers/expense_provider.dart';
 import '../services/database_helper.dart';
 
+/// Chuyen du lieu so (codePoint/colorValue) tu tang DB sang doi tuong giao dien.
+/// De o tang UI de tang du lieu khong phai phu thuoc thu vien Material.
+extension CategoryStatUi on CategoryStat {
+  IconData get icon => IconData(iconCodePoint, fontFamily: 'MaterialIcons');
+  Color get color => Color(colorValue);
+}
+
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
 
