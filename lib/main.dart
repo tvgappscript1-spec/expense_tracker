@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
 import 'core/theme/app_theme.dart';
+import 'views/backup_screen.dart';
 import 'views/budget_setting_screen.dart';
 import 'views/main_screen.dart';
 import 'views/add_transaction_screen.dart';
@@ -74,6 +75,7 @@ class ExpenseTrackerApp extends StatelessWidget {
           MainScreen.routeName: (_) => const MainScreen(),
           AddTransactionScreen.routeName: (_) => const AddTransactionScreen(),
           BudgetSettingScreen.routeName: (_) => const BudgetSettingScreen(),
+          BackupScreen.routeName: (_) => const BackupScreen(),
         },
         ),
       ),

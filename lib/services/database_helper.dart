@@ -1062,6 +1062,87 @@ class DatabaseHelper {
     }
   }
 
+  // ==========================================================================
+  // SAO LUU / KHOI PHUC (BACKUP)
+  // ==========================================================================
+
+  /// Danh sach bang duoc sao luu. Giu dung thu tu: categories truoc vi
+  /// transactions tham chieu toi no (khi khoi phuc phai co cha truoc).
+  static const List<String> backupTables = <String>[
+    tableCategories,
+    tableBudgets,
+    tableSettings,
+    tableTransactions,
+    tableDebts,
+  ];
+
+  int get schemaVersion => _dbVersion;
+
+  /// Doc toan bo du lieu tung bang ra dang Map de dong goi thanh file backup.
+  Future<Map<String, List<Map<String, dynamic>>>> exportAllTables() async {
+    try {
+      final Database db = await database;
+      final Map<String, List<Map<String, dynamic>>> result =
+          <String, List<Map<String, dynamic>>>{};
+      for (final String table in backupTables) {
+        final List<Map<String, dynamic>> rows = await db.query(table);
+        // Tao ban sao co the sua (query tra ve map read-only).
+        result[table] = rows
+            .map((Map<String, dynamic> r) => Map<String, dynamic>.from(r))
+            .toList();
+      }
+      return result;
+    } catch (e) {
+      throw LocalDatabaseException('Không đọc được dữ liệu để sao lưu.', e);
+    }
+  }
+
+  /// Khoi phuc du lieu tu file backup.
+  ///
+  /// XOA SACH du lieu hien tai roi ghi lai tu backup, TAT CA trong 1
+  /// transaction. Neu loi giua chung se rollback, du lieu cu van nguyen ven
+  /// (khong co canh mat ca cu lan moi).
+  Future<void> importAllTables(
+    Map<String, List<Map<String, dynamic>>> data,
+  ) async {
+    try {
+      final Database db = await database;
+      await db.transaction<void>((Transaction txn) async {
+        // Xoa nguoc thu tu de khong vuong rang buoc khoa ngoai.
+        for (final String table in backupTables.reversed) {
+          await txn.delete(table);
+        }
+        // Ghi lai dung thu tu.
+        for (final String table in backupTables) {
+          final List<Map<String, dynamic>>? rows = data[table];
+          if (rows == null) continue;
+          final Batch batch = txn.batch();
+          for (final Map<String, dynamic> row in rows) {
+            batch.insert(table, row);
+          }
+          await batch.commit(noResult: true);
+        }
+      });
+    } catch (e) {
+      throw LocalDatabaseException(
+        'Không khôi phục được dữ liệu. Dữ liệu hiện tại được giữ nguyên.',
+        e,
+      );
+    }
+  }
+
+  /// Dem so ban ghi tung bang - dung hien thi truoc khi khoi phuc.
+  Future<Map<String, int>> countAllTables() async {
+    final Database db = await database;
+    final Map<String, int> counts = <String, int>{};
+    for (final String table in backupTables) {
+      final List<Map<String, dynamic>> r =
+          await db.rawQuery('SELECT COUNT(*) AS c FROM $table');
+      counts[table] = (r.first['c'] as int?) ?? 0;
+    }
+    return counts;
+  }
+
   Future<void> close() async {
     final Database? current = _db;
     if (current != null && current.isOpen) {

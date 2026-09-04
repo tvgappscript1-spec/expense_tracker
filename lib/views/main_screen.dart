@@ -6,6 +6,7 @@ import '../core/utils/formatters.dart';
 import '../providers/expense_provider.dart';
 import '../providers/theme_provider.dart';
 import 'add_transaction_screen.dart';
+import 'backup_screen.dart';
 import 'budget_setting_screen.dart';
 import 'debt_screen.dart';
 import 'expense_calendar_screen.dart';
@@ -140,11 +141,37 @@ class _MainScreenState extends State<MainScreen> {
               );
             },
           ),
-          IconButton(
-            tooltip: 'Đặt hạn mức chi tiêu',
-            icon: const Icon(Icons.savings_outlined),
-            onPressed: () =>
-                Navigator.of(context).pushNamed(BudgetSettingScreen.routeName),
+          PopupMenuButton<String>(
+            tooltip: 'Thêm',
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (String value) {
+              switch (value) {
+                case 'budget':
+                  Navigator.of(context)
+                      .pushNamed(BudgetSettingScreen.routeName);
+                case 'backup':
+                  Navigator.of(context).pushNamed(BackupScreen.routeName);
+              }
+            },
+            itemBuilder: (BuildContext context) =>
+                <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'budget',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.savings_outlined),
+                  title: Text('Đặt hạn mức'),
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'backup',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.backup_outlined),
+                  title: Text('Sao lưu & Khôi phục'),
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 4),
         ],

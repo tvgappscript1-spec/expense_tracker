@@ -178,6 +178,7 @@ lib/
 ├── services/
 │   ├── database_helper.dart         # Singleton, migration v1→v3, seeding, thống kê phân cấp
 │   ├── ocr_service.dart             # ML Kit + Regex bóc tách tiền/ngày/đơn vị
+│   ├── backup_service.dart          # sao lưu / khôi phục ra file JSON
 │   └── seed/category_seed.dart      # bộ danh mục 2 cấp mặc định
 ├── providers/
 │   ├── expense_provider.dart        # thu chi, ngân sách, lịch, ẩn số dư, thống kê
@@ -191,6 +192,7 @@ lib/
 │   ├── debt_screen.dart             # Sổ nợ / cho vay
 │   ├── add_transaction_screen.dart  # Form nhập + nút quét OCR
 │   ├── budget_setting_screen.dart   # Đặt hạn mức
+│   ├── backup_screen.dart           # Sao lưu & khôi phục dữ liệu
 │   ├── stats_screen.dart            # Biểu đồ tròn phân cấp + cột
 │   └── widgets/
 │       ├── budget_progress_card.dart
