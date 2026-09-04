@@ -215,6 +215,7 @@ lib/
 |---|---|---|
 | `App not installed` khi cài đè | Chữ ký khác nhau | Làm Phần A. Bản đã cài bằng debug key phải gỡ 1 lần cuối |
 | `INSTALL_FAILED_VERSION_DOWNGRADE` | `versionCode` không tăng | Tăng số sau dấu `+` trong `pubspec.yaml` |
+| `requires ... compile against version 36` / `checkReleaseAarMetadata` | Plugin mới (file_picker) đòi compileSdk 36 | Workflow đã tự ép compileSdk = 36. Nếu tự build tay, sửa `compileSdk = 36` trong `android/app/build.gradle.kts` |
 | `Missing class com.google.mlkit...` (R8) | R8 quét thấy bộ chữ Trung/Nhật/Hàn không nhúng | Workflow đã có `proguard-rules.pro`. Nếu vẫn lỗi, thêm `--no-shrink` vào lệnh build |
 | `Khong tro duoc release sang keystore that` | Cấu trúc `build.gradle` khác dự kiến | Gửi tôi nội dung `android/app/build.gradle.kts` |
 | Tab Actions trống | Thiếu thư mục `.github` khi upload | Tạo thủ công `.github/workflows/build-apk.yml` |

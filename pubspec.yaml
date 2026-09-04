@@ -4,7 +4,7 @@ publish_to: 'none'
 # QUY TAC: moi lan phat hanh ban cap nhat PHAI tang so sau dau '+'
 # (buildNumber -> versionCode cua Android). Neu khong tang, Android coi la
 # cung mot ban va tu choi cai de.
-version: 1.3.0+5
+version: 1.3.1+6
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -40,9 +40,12 @@ dependencies:
   google_mlkit_text_recognition: ^0.13.0
   image_picker: ^1.1.2
 
-  # Sao luu / khoi phuc: chon file de nhap, chia se file de xuat
-  file_picker: ^8.1.2
-  share_plus: ^10.1.1
+  # Sao luu / khoi phuc: chon file de nhap, chia se file de xuat.
+  # Ghim khoang ban on dinh: file_picker 8.3.x va share_plus 10.x da chay
+  # tot voi compileSdk 36. Tranh de mo (`^`) keo len ban rat moi doi cau
+  # hinh Gradle khac.
+  file_picker: ">=8.1.2 <9.0.0"
+  share_plus: ">=10.1.1 <11.0.0"
 
   cupertino_icons: ^1.0.8
 

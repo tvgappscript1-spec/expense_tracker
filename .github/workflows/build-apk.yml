@@ -69,15 +69,31 @@ jobs:
           fi
 
       # ----------------------------------------------------------------
-      - name: Nang minSdk len 24 (ML Kit OCR bat buoc >= 21)
+      - name: Ép minSdk = 24 và compileSdk = 36
         run: |
           set -e
+          # minSdk 24: ML Kit OCR bat buoc >= 21, de 24 cho on.
+          # compileSdk 36: mot so plugin moi (file_picker + flutter_plugin_
+          # android_lifecycle) doi bien dich voi API 36. compileSdk CHI anh
+          # huong luc bien dich, khong doi hanh vi runtime hay thiet bi cai
+          # duoc, nen nang len an toan.
           if [ -f android/app/build.gradle.kts ]; then
-            sed -i -E 's/^([[:space:]]*)minSdk[[:space:]]*=.*/\1minSdk = 24/' android/app/build.gradle.kts
-            grep -n "minSdk" android/app/build.gradle.kts
+            GRADLE=android/app/build.gradle.kts
+            sed -i -E 's/^([[:space:]]*)minSdk[[:space:]]*=.*/\1minSdk = 24/' "$GRADLE"
+            sed -i -E 's/^([[:space:]]*)compileSdk[[:space:]]*=.*/\1compileSdk = 36/' "$GRADLE"
           else
-            sed -i -E 's/^([[:space:]]*)minSdkVersion.*/\1minSdkVersion 24/' android/app/build.gradle
-            grep -n "minSdk" android/app/build.gradle
+            GRADLE=android/app/build.gradle
+            sed -i -E 's/^([[:space:]]*)minSdkVersion.*/\1minSdkVersion 24/' "$GRADLE"
+            sed -i -E 's/^([[:space:]]*)compileSdkVersion.*/\1compileSdkVersion 36/' "$GRADLE"
+            sed -i -E 's/^([[:space:]]*)compileSdk[[:space:]]*=.*/\1compileSdk = 36/' "$GRADLE"
+          fi
+          echo "--- SDK sau khi va ---"
+          grep -nE "minSdk|compileSdk" "$GRADLE"
+
+          # Chan build som neu compileSdk chua duoc nang (tranh chay 5 phut roi loi).
+          if ! grep -qE "compileSdk[[:space:]]*=?[[:space:]]*36" "$GRADLE"; then
+            echo "::error::Khong nang duoc compileSdk len 36 trong $GRADLE"
+            exit 1
           fi
 
       # ----------------------------------------------------------------
