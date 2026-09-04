@@ -1,0 +1,14 @@
+
+// ============================================================================
+// Ep compileSdk = 36 cho MOI module con (gom plugin file_picker...).
+// Ban Groovy - CI noi vao cuoi android/build.gradle neu du an dung Groovy.
+// ============================================================================
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                compileSdkVersion 36
+            }
+        }
+    }
+}

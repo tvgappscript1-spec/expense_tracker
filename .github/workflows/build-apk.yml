@@ -69,32 +69,40 @@ jobs:
           fi
 
       # ----------------------------------------------------------------
-      - name: Ép minSdk = 24 và compileSdk = 36
+      - name: Ép minSdk (app) và compileSdk 36 (mọi module)
         run: |
           set -e
-          # minSdk 24: ML Kit OCR bat buoc >= 21, de 24 cho on.
-          # compileSdk 36: mot so plugin moi (file_picker + flutter_plugin_
-          # android_lifecycle) doi bien dich voi API 36. compileSdk CHI anh
-          # huong luc bien dich, khong doi hanh vi runtime hay thiet bi cai
-          # duoc, nen nang len an toan.
-          if [ -f android/app/build.gradle.kts ]; then
-            GRADLE=android/app/build.gradle.kts
-            sed -i -E 's/^([[:space:]]*)minSdk[[:space:]]*=.*/\1minSdk = 24/' "$GRADLE"
-            sed -i -E 's/^([[:space:]]*)compileSdk[[:space:]]*=.*/\1compileSdk = 36/' "$GRADLE"
-          else
-            GRADLE=android/app/build.gradle
-            sed -i -E 's/^([[:space:]]*)minSdkVersion.*/\1minSdkVersion 24/' "$GRADLE"
-            sed -i -E 's/^([[:space:]]*)compileSdkVersion.*/\1compileSdkVersion 36/' "$GRADLE"
-            sed -i -E 's/^([[:space:]]*)compileSdk[[:space:]]*=.*/\1compileSdk = 36/' "$GRADLE"
-          fi
-          echo "--- SDK sau khi va ---"
-          grep -nE "minSdk|compileSdk" "$GRADLE"
 
-          # Chan build som neu compileSdk chua duoc nang (tranh chay 5 phut roi loi).
-          if ! grep -qE "compileSdk[[:space:]]*=?[[:space:]]*36" "$GRADLE"; then
-            echo "::error::Khong nang duoc compileSdk len 36 trong $GRADLE"
+          # 1) minSdk = 24 + compileSdk = 36 cho app.
+          if [ -f android/app/build.gradle.kts ]; then
+            APP=android/app/build.gradle.kts
+            sed -i -E 's/^([[:space:]]*)minSdk[[:space:]]*=.*/\1minSdk = 24/' "$APP"
+            sed -i -E 's/^([[:space:]]*)compileSdk[[:space:]]*=.*/\1compileSdk = 36/' "$APP"
+            ROOT=android/build.gradle.kts
+          else
+            APP=android/app/build.gradle
+            sed -i -E 's/^([[:space:]]*)minSdkVersion.*/\1minSdkVersion 24/' "$APP"
+            sed -i -E 's/^([[:space:]]*)compileSdkVersion.*/\1compileSdkVersion 36/' "$APP"
+            ROOT=android/build.gradle
+          fi
+
+          # 2) Ep compileSdk = 36 cho MOI module con (gom plugin file_picker).
+          #    Loi that den tu plugin, khong phai app -> phai ap cho subproject.
+          #    Noi san 1 file snippet trong repo (ci/) de tranh heredoc lam vo YAML.
+          if [ "${ROOT##*.}" = "kts" ]; then
+            cat ci/force_compile_sdk.gradle.kts >> "$ROOT"
+          else
+            cat ci/force_compile_sdk.gradle >> "$ROOT"
+          fi
+
+          echo "--- Duoi file build.gradle GOC ---"
+          tail -15 "$ROOT"
+          if ! grep -q "compileSdkVersion" "$ROOT"; then
+            echo "::error::Chua noi duoc snippet compileSdk vao $ROOT"
             exit 1
           fi
+
+
 
       # ----------------------------------------------------------------
       # R8 (bo nen code khi build release) bao loi "Missing class" vi plugin
